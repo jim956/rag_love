@@ -1,0 +1,31 @@
+[project]
+name = "rag-love"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.162.0",
+    "langchain>=1.4.7",
+    "langchain-core>=1.7.0",
+    "langchain-mcp-adapters>=0.3.2",
+    "langchain-openai>=1.7.2",
+    "langgraph>=1.2.17",
+    "langgraph-checkpoint-postgres>=3.2.0",
+    "openai>=3.37.0",
+    "psycopg[binary]>=3.3.6",
+    "pydantic-settings>=2.16.1",
+    "pymilvus>=3.0.2",
+    "uvicorn>=0.54.0",
+]
+
+[tool.uv]
+# 依赖链 mcp -> pyjwt[crypto] -> cryptography。cryptography 从 49 起只发布 arm64 的
+# macOS wheel，Intel Mac 上会退化成源码编译（需要 Rust 且耗时），这里固定到仍带
+# universal2 wheel 的 48.x，保证本地 uv sync / uv run 不需要编译。
+# 部署到 Linux 或 Apple Silicon 后可以去掉这条约束。
+constraint-dependencies = ["cryptography<49"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

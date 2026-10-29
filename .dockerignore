@@ -1,0 +1,23 @@
+# 构建上下文只保留后端源码与依赖清单
+
+# 密钥绝不进镜像，运行时由 docker-compose 的 env_file 注入
+.env
+.env.*
+
+.venv/
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+
+# 前端（由前置的静态托管 / 独立前端服务负责）
+rag_love_frontend/
+
+.idea/
+.claude/
+.DS_Store
+.git/
+.gitignore
+README.md
+Dockerfile
+docker-compose.yml

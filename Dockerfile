@@ -45,8 +45,8 @@ RUN uv sync --frozen --no-dev --no-install-project
 # 这一步放在拷代码之前，缓存就跟着镜像固定下来了，后面改代码不会重跑。
 # 构建机没有 npm registry 访问时这两步会静默失败，不影响镜像可用。
 USER app
-RUN timeout 180 npx -y bing-cn-mcp >/dev/null 2>&1 || true
-RUN timeout 180 npx -y 12306-mcp >/dev/null 2>&1 || true
+RUN timeout 180 npx -y bing-cn-mcp >/dev/null || true
+RUN timeout 180 npx -y 12306-mcp >/dev/null || true
 
 # ③ 业务代码：唯一每次部署都会变的层。
 # 用 COPY --chown 一步到位，省掉之前 `RUN chown -R /app` 那一层

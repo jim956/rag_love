@@ -43,10 +43,27 @@ RUN uv sync --frozen --no-dev --no-install-project
 # ② 预热 npx 缓存。首次启动时 MCP 下载 npm 包若超过 30 秒
 # （app/graph/mcp.py 的 MCP_LOAD_TIMEOUT_SECONDS），该服务器的工具会被跳过。
 # 这一步放在拷代码之前，缓存就跟着镜像固定下来了，后面改代码不会重跑。
-# 构建机没有 npm registry 访问时这两步会静默失败，不影响镜像可用。
+# 构建机没有 npm registry 访问时这几步会失败（日志里有 warmup failed 一行），
+# 但不影响镜像可用。
+#
+# 包名必须和 app/graph/mcp.py 里逐字一致：npx 的缓存目录 ~/.npm/_npx/<hash>
+# 是由包名 spec 算出来的，写成 12306-mcp@0.3.10 会落到另一个目录，
+# 预热的东西运行期根本命中不了（要固定版本得两边一起改）。
+# 不写版本也能复现：_npx 里的目录一旦存在就不再重新解析，镜像里的版本
+# 就固定在构建那一刻，和运行期用的必然是同一份。
+# </dev/null 不能省：这些包是 stdio server，没有 stdin 时它会一直等到被 timeout 杀掉。
+#
+# 构建缓存只按指令文本判定，加上 `|| echo` 兜底后这一层总是「成功」的，
+# 失败一次就会被永久复用。要强制重跑预热，把 NPM_WARM_EPOCH 改个值
+# （docker build --build-arg NPM_WARM_EPOCH=2 ...），ARG 参与缓存键靠下面 echo 引用它。
+ARG NPM_WARM_EPOCH=1
+
 USER app
-RUN timeout 180 npx -y bing-cn-mcp >/dev/null || true
-RUN timeout 180 npx -y 12306-mcp >/dev/null || true
+RUN echo "npx warmup epoch ${NPM_WARM_EPOCH}" \
+    && { timeout 180 npx -y bing-cn-mcp </dev/null >/dev/null \
+         || echo "warmup failed: bing-cn-mcp"; } \
+    && { timeout 180 npx -y 12306-mcp </dev/null >/dev/null \
+         || echo "warmup failed: 12306-mcp"; }
 
 # ③ 业务代码：唯一每次部署都会变的层。
 # 用 COPY --chown 一步到位，省掉之前 `RUN chown -R /app` 那一层

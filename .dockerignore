@@ -20,4 +20,3 @@ rag_love_frontend/
 .gitignore
 README.md
 Dockerfile
-docker-compose.yml

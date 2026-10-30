@@ -1,5 +1,6 @@
 """HTTP 请求 / 响应模型。"""
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -25,3 +26,14 @@ class HistoryMessage(BaseModel):
 class ThreadHistory(BaseModel):
     thread_id: str
     messages: list[HistoryMessage]
+
+class ThreadSummary(BaseModel):
+    """会话列表中的一项：标题和最后活动时间都由服务端给出。"""
+
+    thread_id: str
+    title: str
+    updated_at: datetime
+
+
+class ThreadList(BaseModel):
+    threads: list[ThreadSummary]

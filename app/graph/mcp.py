@@ -26,6 +26,8 @@ mcp_client = MultiServerMCPClient(
     {
         "bing-search": {"transport": "stdio", "command": "npx", "args": ["-y", "bing-cn-mcp"]},
         "12306-mcp": {"transport": "stdio", "command": "npx", "args": ["-y", "12306-mcp"]},
+        "howtocook-mcp": {"transport": "stdio", "command": "npx", "args": ["-y", "howtocook-mcp"]
+                          }
     },
 )
 

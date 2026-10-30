@@ -17,7 +17,7 @@ def _format_timestamp(timestamp: float) -> str:
 def search_chat_records(
     query: str | list[str], start_ts: int, end_ts: int, limit: int | None = None
 ) -> str:
-    """从聊天记录库中检索这对情侣的聊天片段。聊天记录已按时间分段，每个片段带有开始时间和结束时间。其中A表示男方、B表示女方。返回结果已按相关度从高到低排列。
+    """从聊天记录库中检索这对情侣的聊天片段。聊天记录已按时间分段，每个片段带有开始时间和结束时间。其中A表示男方、B表示女方。返回结果已按相关度从高到低排列。你在输出时请根据推测将A、B替换为你、她或者你、他,如果推断不出就用男方、女方。
 
     Args:
         query: 需要检索的聊天记录片段内容，可以是一条或多条查询语句。

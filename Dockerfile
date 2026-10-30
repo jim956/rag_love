@@ -62,6 +62,8 @@ USER app
 RUN echo "npx warmup epoch ${NPM_WARM_EPOCH}" \
     && { timeout 180 npx -y bing-cn-mcp </dev/null >/dev/null \
          || echo "warmup failed: bing-cn-mcp"; } \
+    && { timeout 180 npx -y howtocook-mcp </dev/null >/dev/null \
+         || echo "warmup failed: howtocook-mcp"; } \
     && { timeout 180 npx -y 12306-mcp </dev/null >/dev/null \
          || echo "warmup failed: 12306-mcp"; }
 

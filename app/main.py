@@ -15,6 +15,7 @@ from app.config import get_settings
 from app.graph.agent import build_graph
 from app.graph.mcp import open_mcp_sessions
 from app.graph.tools import LOCAL_TOOLS
+from app.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,13 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     settings.require_runtime_keys()
+    logger.info(
+        "服务启动：模型=%s，Milvus collection=%s，日志级别=%s，聊天内容日志=%s",
+        settings.chat_model,
+        settings.milvus_collection,
+        settings.log_level.upper(),
+        "开启" if settings.log_message_content else "关闭",
+    )
 
     pool = AsyncConnectionPool(
         conninfo=settings.postgres_uri,
@@ -54,9 +62,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             yield
     finally:
         await pool.close()
+        logger.info("服务关闭，PostgreSQL 连接池已释放")
 
 
 def create_app() -> FastAPI:
+    setup_logging()
     settings = get_settings()
     app = FastAPI(title="恋爱小助手 API", version="1.0.0", lifespan=lifespan)
     app.add_middleware(

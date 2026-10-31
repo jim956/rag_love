@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import time
 from collections.abc import AsyncIterator
 from typing import Any
 from uuid import uuid4
@@ -12,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage, ToolMessage
 from langgraph.graph.state import CompiledStateGraph
 
+from app.graph.callbacks import ConversationLogHandler
 from app.messages import message_text
 from app.schemas import ChatRequest
 
@@ -45,7 +47,14 @@ def _tool_events(update: dict[str, Any]) -> list[str]:
 async def _stream_chat(
     graph: CompiledStateGraph, thread_id: str, message: str
 ) -> AsyncIterator[str]:
-    config = {"configurable": {"thread_id": thread_id}}
+    # 回调负责记录用户消息、AI 回复以及每次工具调用的入参/返回
+    log_handler = ConversationLogHandler(thread_id)
+    config = {
+        "configurable": {"thread_id": thread_id},
+        "callbacks": [log_handler],
+    }
+    started = time.perf_counter()
+    log_handler.log_user_message(message)
     yield _sse("start", {"thread_id": thread_id})
     try:
         async for mode, chunk in graph.astream(
@@ -65,10 +74,16 @@ async def _stream_chat(
                     yield event
     except asyncio.CancelledError:
         # 客户端断开连接，让检查点保留已完成的内容即可
+        logger.info(
+            "[thread=%s] 客户端断开，本轮对话中止（耗时 %.2fs）",
+            thread_id,
+            time.perf_counter() - started,
+        )
         raise
     except Exception as exc:
         logger.exception("对话生成失败 thread_id=%s", thread_id)
         yield _sse("error", {"message": f"生成失败：{exc}"})
+    logger.info("[thread=%s] 本轮对话结束，耗时 %.2fs", thread_id, time.perf_counter() - started)
     yield _sse("done", {"thread_id": thread_id})
 
 

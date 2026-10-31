@@ -1,5 +1,6 @@
 """Milvus 混合检索：稠密向量 + 稀疏向量召回，再用交叉编码器重排。"""
 
+import logging
 from functools import lru_cache
 from typing import Any
 
@@ -7,6 +8,8 @@ from openai import OpenAI
 from pymilvus import AnnSearchRequest, Function, FunctionType, MilvusClient
 
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -17,8 +20,12 @@ def _dense_client() -> OpenAI:
 
 @lru_cache(maxsize=1)
 def _milvus_client() -> MilvusClient:
-    return MilvusClient(uri=get_settings().milvus_uri, user=get_settings().milvus_user,
-                        password=get_settings().milvus_password, db_name=get_settings().milvus_database)
+    return MilvusClient(
+        uri=get_settings().milvus_uri,
+        user=get_settings().milvus_user,
+        password=get_settings().milvus_password,
+        db_name=get_settings().milvus_database,
+    )
 
 
 def _embed(texts: list[str]) -> list[list[float]]:
@@ -46,7 +53,9 @@ def _rerank_function(queries: list[str]) -> Function:
     )
 
 
-def hybrid_search(queries: list[str], start_ts: int, end_ts: int, limit: int | None = None) -> list[dict[str, Any]]:
+def hybrid_search(
+    queries: list[str], start_ts: int, end_ts: int, limit: int | None = None
+) -> list[dict[str, Any]]:
     """返回按相关度排序的聊天片段，每个片段包含 text / start_ts / end_ts。"""
     settings = get_settings()
     limit = limit or settings.search_limit
@@ -58,10 +67,18 @@ def hybrid_search(queries: list[str], start_ts: int, end_ts: int, limit: int | N
     expr = " && ".join(conditions) if conditions else ""
     requests = [
         AnnSearchRequest(
-            data=_embed(queries), anns_field=settings.milvus_dense_field, param={}, limit=limit, filter=expr
+            data=_embed(queries),
+            anns_field=settings.milvus_dense_field,
+            param={},
+            limit=limit,
+            filter=expr,
         ),
         AnnSearchRequest(
-            data=queries, anns_field=settings.milvus_sparse_field, param={}, limit=limit, filter=expr
+            data=queries,
+            anns_field=settings.milvus_sparse_field,
+            param={},
+            limit=limit,
+            filter=expr,
         ),
     ]
 
@@ -73,4 +90,13 @@ def hybrid_search(queries: list[str], start_ts: int, end_ts: int, limit: int | N
         output_fields=["text", "start_ts", "end_ts"],
     )
     # hybrid_search 按查询分组返回；本项目每次只查一条组合查询
-    return [hit["entity"] for hit in results[0]] if results else []
+    fragments = [hit["entity"] for hit in results[0]] if results else []
+    logger.debug(
+        "混合检索：queries=%s，时间范围=[%s, %s]，limit=%s，命中 %d 条",
+        queries,
+        start_ts,
+        end_ts,
+        limit,
+        len(fragments),
+    )
+    return fragments

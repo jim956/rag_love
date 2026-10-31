@@ -1,6 +1,7 @@
 """会话接口：列出所有会话、从 PostgreSQL 检查点读取历史，或删除整个会话。"""
 
 import asyncio
+import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Path, Request
@@ -8,6 +9,8 @@ from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 
 from app.messages import message_text
 from app.schemas import HistoryMessage, ThreadHistory, ThreadList, ThreadSummary
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -67,6 +70,7 @@ async def list_threads(request: Request) -> ThreadList:
     titles = await asyncio.gather(
         *(_thread_title(graph, row["thread_id"], semaphore) for row in rows)
     )
+    logger.debug("列出会话，共 %d 个", len(rows))
     return ThreadList(
         threads=[
             ThreadSummary(thread_id=row["thread_id"], title=title, updated_at=row["updated_at"])
@@ -95,12 +99,14 @@ async def get_thread(request: Request, thread_id: ThreadId) -> ThreadHistory:
     snapshot = await request.app.state.graph.aget_state(
         {"configurable": {"thread_id": thread_id}}
     )
+    messages = _to_history(snapshot.values.get("messages", []))
+    logger.debug("[thread=%s] 读取历史，共 %d 条消息", thread_id, len(messages))
     return ThreadHistory(
         thread_id=thread_id,
-        messages=_to_history(snapshot.values.get("messages", [])),
+        messages=messages,
     )
 
 
-@router.delete("/threads/{thread_id}", status_code=204)
-async def delete_thread(request: Request, thread_id: ThreadId) -> None:
-    await request.app.state.checkpointer.adelete_thread(thread_id)
+#@router.delete("/threads/{thread_id}", status_code=204)
+#async def delete_thread(request: Request, thread_id: ThreadId) -> None:
+#    await request.app.state.checkpointer.adelete_thread(thread_id)

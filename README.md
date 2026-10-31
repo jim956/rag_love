@@ -29,6 +29,7 @@
 ├── app/
 │   ├── main.py             # FastAPI 应用、lifespan（连接 PostgreSQL、加载 MCP 工具、编译对话图）
 │   ├── config.py           # 环境变量配置（.env）
+│   ├── logging_config.py   # 日志级别 / 格式配置
 │   ├── schemas.py          # 请求 / 响应模型
 │   ├── messages.py         # 消息文本提取
 │   ├── api/
@@ -36,6 +37,7 @@
 │   │   └── threads.py      # GET /api/threads（列表）、GET/DELETE /api/threads/{thread_id}
 │   ├── graph/
 │   │   ├── agent.py        # 构建 LangGraph 对话图
+│   │   ├── callbacks.py    # 记录用户消息、AI 回复与工具入参/出参
 │   │   ├── state.py        # ChatState（messages）
 │   │   ├── tools.py        # 本地工具：聊天记录检索、当前时间
 │   │   └── mcp.py          # MCP 常驻会话与工具加载
@@ -107,8 +109,21 @@ docker build --build-arg NPM_WARM_EPOCH=2 -t rag-love .
 | `POSTGRES_URI` | — | **必填**，PostgreSQL 连接串（检查点存储） |
 | `POSTGRES_POOL_MAX_SIZE` | `10` | 连接池大小 |
 | `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | 允许的跨域来源，逗号分隔 |
+| `LOG_LEVEL` | `INFO` | 业务日志级别；`DEBUG` 额外输出模型完整输入（系统提示词 + 历史） |
+| `LOG_MESSAGE_CONTENT` | `true` | 是否输出用户消息、AI 回复和工具入参/返回（含聊天原文） |
 
 配置从环境变量或项目根目录的 `.env` 读取。Milvus collection 需包含 `text`、`start_ts`、`end_ts` 输出字段，以及稠密/稀疏向量两个检索字段。
+
+## 日志
+
+业务日志统一输出到 stdout，格式为 `时间 | 级别 | logger | 内容`，用 `uvicorn main:app` 启动时可直接在终端看到。每轮对话会依次记录：
+
+- 用户消息（`[thread=...] 用户消息:`）
+- AI 消息，以及 AI 决定调用哪些工具
+- 每次工具调用（本地和 MCP 工具一致）：工具名、入参、返回内容、status 与耗时
+- 本轮对话的整体耗时；客户端断开或生成失败时会单独打日志
+
+`LOG_MESSAGE_CONTENT=false` 时不再输出消息原文和工具入参/返回，只保留工具名、状态和耗时，适合日志不宜包含聊天内容的部署环境。`LOG_LEVEL=DEBUG` 可进一步看到每次模型调用的完整输入。
 
 ## API
 

@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     # Web 服务
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
+    # 日志
+    log_level: str = "INFO"
+    # 是否把用户消息、AI 回复和工具入参/出参写进日志（包含聊天原文）
+    log_message_content: bool = True
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

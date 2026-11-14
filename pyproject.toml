@@ -4,6 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.162.0",
+    "ipykernel>=7.4.0",
     "langchain>=1.4.7",
     "langchain-core>=1.7.0",
     "langchain-mcp-adapters>=0.3.2",

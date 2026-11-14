@@ -47,11 +47,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # MCP 的常驻会话挂在 exit stack 上，随服务关闭一起释放
         async with AsyncExitStack() as stack:
             tools = list(LOCAL_TOOLS)
+
             try:
                 tools.extend(await open_mcp_sessions(stack))
             except Exception:
                 # npx 缺失、离线、包名写错都不应让整个 API 启动失败
                 logger.warning("MCP 工具加载失败，仅使用本地工具", exc_info=True)
+
 
             app.state.graph = build_graph(checkpointer, tools=tools)
             logger.info(

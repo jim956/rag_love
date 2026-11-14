@@ -1,6 +1,7 @@
 """对话图可用的本地工具：不依赖外部进程，MCP 工具由 app.graph.mcp 单独加载。"""
 
 import time
+from typing import Literal
 
 from langchain_core.tools import tool
 
@@ -15,29 +16,30 @@ def _format_timestamp(timestamp: float) -> str:
 
 @tool
 def search_chat_records(
-    query: str | list[str], start_ts: int, end_ts: int, limit: int | None = None
+        queries: list[str], mode: Literal["or", "and"], start_ts: int | None = None, end_ts: int | None = None,
+        limit: int | None = None
 ) -> str:
-    """从聊天记录库中检索这对情侣的聊天片段。聊天记录已按时间分段，每个片段带有开始时间和结束时间。其中A表示男方、B表示女方。
-    返回结果已按相关度从高到低排列。你在输出时请根据推测将A、B替换为你、她或者你、他,如果推断不出就用男方、女方。
+    """
+    从聊天记录库中检索这对情侣的聊天片段,返回结果已按相关度从高到低排列。
 
     Args:
-        query: 需要检索的聊天记录片段内容，可以是一条或多条查询语句。
+        queries: 检索关键词列表
+        mode: 关键词组合方式(or匹配关键词列表中的任意词,and匹配关键词列表中的所有词)
         start_ts: 检索的聊天记录片段的起始时间戳(可选)
         end_ts: 检索的聊天记录片段的终止时间戳(可选)
-        limit: 返回的聊天记录片段数量，默认取配置项 SEARCH_LIMIT。
+        limit: 返回的聊天记录片段数量(可选,系统有默认值)
 
     """
-    queries = [query] if isinstance(query, str) else list(query)
+
     if not queries:
         return "错误：检索内容为空。"
 
-    fragments = hybrid_search(queries, start_ts, end_ts, limit)
+    fragments = hybrid_search(queries, mode, start_ts, end_ts, limit)
     if not fragments:
         return "没有检索到相关聊天记录。"
 
     blocks = [
-        f"第{index}段，开始时间 {_format_timestamp(fragment['start_ts'])}，"
-        f"结束时间 {_format_timestamp(fragment['end_ts'])}，聊天内容：\n{fragment['text']}"
+        f"第{index}段:\n{_format_timestamp(fragment['start_ts'])} ~ {_format_timestamp(fragment['end_ts'])}\n{fragment['text']}"
         for index, fragment in enumerate(fragments, start=1)
     ]
     return "\n\n".join(blocks)
